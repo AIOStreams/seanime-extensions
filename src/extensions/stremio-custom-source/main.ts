@@ -308,7 +308,13 @@ class Provider implements CustomSource {
       ('background' in meta ? (meta as Meta).background : null) ?? poster;
     const year = this.parseYear(meta.releaseInfo);
     const rating = this.parseImdbRating(meta.imdbRating);
-    const episodes = this.countMainEpisodes(meta);
+    const { mains, specials: _specials } = this.classifyVideos(meta);
+    // Only expose main episodes in the count - seanime's discrepancy-based
+    // specials display is not reliable for custom sources (specials appear as
+    // "Episode 0" or in reversed order). Specials metadata is still built in
+    // metaToAnimeMetadata and mapped in buildEpisodeMappings for future use.
+    const totalEpisodes = mains.length;
+    const isSingleMovie = totalEpisodes === 0 && type === 'movie';
 
     const metaDetails = {
       id: meta.id,
@@ -341,9 +347,9 @@ class Provider implements CustomSource {
       meanScore: rating,
       synonyms: [],
       status: 'FINISHED',
-      episodes: type === 'movie' ? 1 : episodes || undefined,
+      episodes: isSingleMovie ? 1 : totalEpisodes || undefined,
       type: 'ANIME',
-      format: type === 'movie' ? 'MOVIE' : 'TV',
+      format: isSingleMovie ? 'MOVIE' : 'TV',
       seasonYear: year,
       isAdult: false,
       startDate: {
@@ -355,44 +361,25 @@ class Provider implements CustomSource {
   }
 
   private metaToAnimeMetadata(meta: Meta): $app.Metadata_AnimeMetadata {
-    const type = meta.type;
     const title = meta.name ?? meta.id;
-    const videos = (meta.videos ?? []).slice();
     const mappings = this.buildMappings(meta.id);
+    const { mains, specials } = this.classifyVideos(meta);
 
-    if (type === 'movie' || videos.length === 0) {
+    if (mains.length === 0 && specials.length === 0) {
       return {
         titles: { en: title ?? '' },
-        episodes: {
-          '1': this.buildMovieEpisode(meta, title ?? meta.id),
-        },
+        episodes: { '1': this.buildMovieEpisode(meta, title ?? meta.id) },
         episodeCount: 1,
         specialCount: 0,
         mappings,
       };
     }
 
-    const mainVideos = videos
-      .filter((v) => (v.season ?? 1) > 0 && (v.episode ?? 0) > 0)
-      .sort((a, b) => {
-        const sa = a.season ?? 1;
-        const sb = b.season ?? 1;
-        if (sa !== sb) return sa - sb;
-        return (a.episode ?? 0) - (b.episode ?? 0);
-      });
-    const specials = videos
-      .filter((v) => (v.season ?? 1) === 0)
-      .sort((a, b) => (a.episode ?? 0) - (b.episode ?? 0));
-
-    // Compute absolute episode numbers by walking season-ordered videos and
-    // accumulating counts. This keeps a stable "1..N" numbering regardless of
-    // gaps in the source catalog's season structure.
     const episodes: Record<string, $app.Metadata_EpisodeMetadata> = {};
-    mainVideos.forEach((v, idx) => {
+    mains.forEach((v, idx) => {
       const absolute = idx + 1;
       episodes[String(absolute)] = this.buildEpisode(v, absolute);
     });
-
     specials.forEach((v, idx) => {
       const key = `S${idx + 1}`;
       episodes[key] = this.buildEpisode(v, idx + 1, { key, isSpecial: true });
@@ -401,7 +388,7 @@ class Provider implements CustomSource {
     return {
       titles: { en: title ?? '' },
       episodes,
-      episodeCount: mainVideos.length,
+      episodeCount: mains.length,
       specialCount: specials.length,
       mappings,
     };
@@ -501,31 +488,45 @@ class Provider implements CustomSource {
     return mappings;
   }
 
-  private countMainEpisodes(meta: MetaPreview | Meta): number {
+  // Classify a meta's videos into mains and specials regardless of meta type.
+  // A video is a special when its season is 0; everything else is a main. If
+  // season/episode are present we sort by them, so the resulting absolute
+  // numbering 1..N (mains) and 1..M (specials) stays stable across calls.
+  private classifyVideos(meta: MetaPreview | Meta): {
+    mains: MetaVideo[];
+    specials: MetaVideo[];
+  } {
     const videos = (meta as Meta).videos;
-    if (!videos?.length) return 0;
-    let count = 0;
-    for (const v of videos) {
-      if ((v.season ?? 1) > 0 && (v.episode ?? 0) > 0) count++;
-    }
-    return count;
+    if (!videos?.length) return { mains: [], specials: [] };
+    const withId = videos.filter((v) => !!v.id);
+    const sortByEp = (a: MetaVideo, b: MetaVideo) => {
+      const sa = a.season ?? 1;
+      const sb = b.season ?? 1;
+      if (sa !== sb) return sa - sb;
+      return (a.episode ?? 0) - (b.episode ?? 0);
+    };
+    const mains = withId.filter((v) => (v.season ?? 1) !== 0).sort(sortByEp);
+    const specials = withId
+      .filter((v) => v.season === 0)
+      .sort((a, b) => (a.episode ?? 0) - (b.episode ?? 0));
+    return { mains, specials };
   }
 
+  // Maps the AniDB-style episode key Seanime uses ("1", "2", …, "S1", "S2", …)
+  // to the original Stremio video id, so plugins can forward the exact id back
+  // to the addon when fetching streams. Keys mirror metaToAnimeMetadata so the
+  // plugin can look up by either episode.aniDBEpisode or episode.episodeNumber.
   private buildEpisodeMappings(
     meta: MetaPreview | Meta
   ): Record<string, string> {
-    const videos = (meta as Meta).videos;
-    if (!videos?.length) return {};
+    const { mains, specials } = this.classifyVideos(meta);
     const mapping: Record<string, string> = {};
-    for (const v of videos) {
-      if (!v.id) continue;
-      // we need to map the absolute episode number back to the original video ID which contains season/episode info, so plugins can send the correct ID back to stremio when requesting streams.
-      const season = v.season ?? 1;
-      const episode = v.episode ?? 0;
-      if (season === 0 || episode === 0) continue;
-      const absolute = Object.keys(mapping).length + 1;
-      mapping[String(absolute)] = v.id;
-    }
+    mains.forEach((v, idx) => {
+      mapping[String(idx + 1)] = v.id;
+    });
+    specials.forEach((v, idx) => {
+      mapping[`S${idx + 1}`] = v.id;
+    });
     return mapping;
   }
 

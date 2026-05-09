@@ -36,8 +36,9 @@ function buildLookup(
 
 function parseStremioCustomSourceId(
   siteUrl: string,
-  episodeNumber: number
-): ParsedId | null {
+  episodeNumber: number,
+  aniDBEpisode: string | undefined
+): { parsedId: ParsedId; mediaType: string } | null {
   const parts = siteUrl.split('|');
   if (parts.length !== 3) return null;
   try {
@@ -47,16 +48,46 @@ function parseStremioCustomSourceId(
     const parsed = JSON.parse(decoded);
     if (!parsed || typeof parsed !== 'object') return null;
 
-    if (parsed.type !== 'series') {
-      return { type: 'stremioId', value: parsed.imdb_id || parsed.id };
+    const mediaType =
+      typeof parsed.type === 'string' && parsed.type ? parsed.type : 'series';
+
+    let epMapping: unknown;
+    if (parsed.episodes && typeof parsed.episodes === 'object') {
+      if (aniDBEpisode && aniDBEpisode in parsed.episodes) {
+        epMapping = parsed.episodes[aniDBEpisode];
+      } else {
+        epMapping = parsed.episodes[String(episodeNumber)];
+      }
     }
-    const epMapping = parsed.episodes?.[String(episodeNumber)];
-    const parsedStremioId = parseStremioId(epMapping ?? '');
+    if (typeof epMapping === 'string' && epMapping) {
+      // Only parse the id when it uses a scheme parseStremioId actually
+      // understands. For arbitrary addon-defined ids, a trailing `:N` could
+      // just be a part of the id, not a season/episode.
+      const isKnownScheme =
+        /^tt\d+/.test(epMapping) ||
+        /^(kitsu|mal|anilist|tmdb|tvdb|anidb|simkl):/.test(epMapping);
+      if (isKnownScheme) {
+        const parsedStremioId = parseStremioId(epMapping);
+        return {
+          parsedId: {
+            type: 'stremioId',
+            value: parsedStremioId?.baseId ?? epMapping,
+            season: parsedStremioId?.season,
+            episode: parsedStremioId?.episode,
+          },
+          mediaType,
+        };
+      }
+      return {
+        parsedId: { type: 'stremioId', value: epMapping },
+        mediaType,
+      };
+    }
+
+    // No per-episode mapping (single entry meta) — use the meta's own id.
     return {
-      type: 'stremioId',
-      value: parsedStremioId?.baseId,
-      season: parsedStremioId?.season,
-      episode: parsedStremioId?.episode,
+      parsedId: { type: 'stremioId', value: parsed.imdb_id || parsed.id },
+      mediaType,
     };
   } catch (err) {
     $debug.warn(
@@ -87,6 +118,8 @@ export class StreamFetcher {
   ): Promise<void> {
     const episodeNumber =
       typeof episode === 'number' ? episode : episode.episodeNumber;
+    const aniDBEpisode =
+      typeof episode === 'object' ? episode.aniDBEpisode : undefined;
     const manifestUrl = $getUserPreference('manifestUrl') ?? '';
     const searchId = ($getUserPreference('searchId') ??
       'imdbId') as SearchIdPref;
@@ -121,7 +154,6 @@ export class StreamFetcher {
     const episodeInfo = isMovie
       ? animeTitle
       : `${animeTitle} \xb7 Episode ${episodeNumber}`;
-    const mediaType = isMovie ? 'movie' : 'series';
 
     this.pendingAnime.set(anime);
     this.pendingEp.set(episode);
@@ -152,8 +184,17 @@ export class StreamFetcher {
     let searchMs: number | null = null;
 
     let parsedId: ParsedId | null = null;
+    let mediaType: string | null = null;
     if (anime.siteUrl?.startsWith('ext_custom_source_stremio-custom-source')) {
-      parsedId = parseStremioCustomSourceId(anime.siteUrl, episodeNumber);
+      const parsed = parseStremioCustomSourceId(
+        anime.siteUrl,
+        episodeNumber,
+        aniDBEpisode
+      );
+      if (parsed) {
+        parsedId = parsed.parsedId;
+        mediaType = parsed.mediaType;
+      }
     }
     if (!parsedId) {
       parsedId = {
@@ -162,6 +203,7 @@ export class StreamFetcher {
         episode: isMovie ? undefined : episodeNumber,
       };
     }
+    mediaType = mediaType ?? (isMovie ? 'movie' : 'series');
     const originalId = { ...parsedId };
 
     if (parsedId.type !== 'stremioId') {
