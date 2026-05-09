@@ -59,8 +59,8 @@ html,body{height:100%;width:100%;overflow:hidden;background-color:transparent !i
 .ov-sec{margin-bottom:16px}
 .ov-sec-label{font-size:10px;font-weight:700;color:rgba(255,255,255,0.28);letter-spacing:.09em;text-transform:uppercase;margin-bottom:8px}
 .ov-item{padding:9px 11px;border:1px solid rgba(255,255,255,0.06);border-radius:8px;margin-bottom:5px;background:rgba(255,255,255,0.018)}
-.ov-item-title{font-size:12px;font-weight:600;color:#e2e8f0}
-.ov-item-desc{font-size:12px;color:rgba(255,255,255,0.48);margin-top:2px;line-height:1.45;white-space:pre-line;word-break:break-word}
+.ov-item-title{font-size:15px;font-weight:500;color:#e2e8f0}
+.ov-item-desc{font-size:14px;color:rgba(255,255,255,0.58);margin-top:4px;line-height:1.5;white-space:pre-line;word-break:break-word}
 .ov-item.is-err .ov-item-title{color:#f87171}
 .dl-pct{font-size:9px;font-weight:800;line-height:1;letter-spacing:-.02em}
 .btn-i.dl-ok{color:#4ade80}.btn-i.dl-err{color:#f87171}
