@@ -87,6 +87,10 @@ interface SearchApiResponse {
     description: string;
     title: string;
   }[];
+  statistics?: {
+    title: string;
+    description: string;
+  }[];
   results: AIOStreamsSearchApiResult[];
 }
 
@@ -387,29 +391,54 @@ class AIOStreamsAPI {
   }
 }
 
+// supports manifest URLs in the format of <baseUrl>/stremio/<uuid>/<encryptedPassword>/manifest.json
 function parseManifestUrl(url: string): {
   baseUrl: string;
   uuid: string;
   encryptedPassword: string;
 } {
+  const clean = url.trim();
+  if (!clean) throw new Error('Manifest URL is required');
+
+  let parsedUrl: URL;
   try {
-    const parsedUrl = new URL(url);
-
-    // Expecting URL format // <baseUrl>/stremio/<uuid>/<encryptedPassword>/manifest.json
-    const pathSegments = parsedUrl.pathname.split('/').filter(Boolean);
-    if (pathSegments.length < 4 || pathSegments[0] !== 'stremio') {
-      throw new Error('Invalid manifest URL format');
-    }
-
-    const uuid = pathSegments[1];
-    const encryptedPassword = pathSegments[2];
-    const baseUrl = `${parsedUrl.protocol}//${parsedUrl.host}`;
-    return { baseUrl, uuid, encryptedPassword };
+    parsedUrl = new URL(clean);
   } catch (error) {
     throw new Error(
       `Failed to parse manifest URL: ${error instanceof Error ? error.message : String(error)}`
     );
   }
+
+  // if url is of alias format e.g <baseUrl>/stremio/u/<alias>/manifest.json
+  // throw a more specific error.
+  const aliasMatch = parsedUrl.pathname.match(
+    /^\/stremio\/u\/([^/]+)\/manifest\.json$/
+  );
+  if (aliasMatch) {
+    const alias = aliasMatch[1];
+    throw new Error(
+      `Manifest URL is using alias format with alias "${alias}". Alias URLs are not supported, please use the full Manifest URL that contains your UUID. `
+    );
+  }
+
+  // Expecting URL format // <baseUrl>/stremio/<uuid>/<encryptedPassword>/manifest.json
+  const segments = parsedUrl.pathname.split('/').filter(Boolean);
+  if (
+    segments.length < 4 ||
+    segments[0] !== 'stremio' ||
+    segments[segments.length - 1] !== 'manifest.json'
+  ) {
+    throw new Error('Invalid manifest URL format');
+  }
+
+  const uuid = decodeURIComponent(segments[1]);
+  const encryptedPassword = decodeURIComponent(segments[2]);
+  if (!uuid || !encryptedPassword) {
+    throw new Error('Manifest URL is missing uuid or password token');
+  }
+
+  const baseUrl = `${parsedUrl.protocol}//${parsedUrl.host}`;
+  return { baseUrl, uuid, encryptedPassword };
 }
 
 export {

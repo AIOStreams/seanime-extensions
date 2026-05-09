@@ -36,6 +36,71 @@ function normalizeWinPath(filePath) {
   return filePath.replace(/\\/g, '/');
 }
 
+// Seanime plugins re-evaluate the `$ui.register` callback (and `$app.onXxx`
+// hook callbacks) as a stringified function inside fresh runtimes that have no
+// access to the loader VM's top-level scope. esbuild bundles ES module imports
+// as top-level definitions, so anything imported from `lib/` is invisible
+// inside those callbacks at runtime.
+//
+// This rewriter takes the IIFE-formatted bundle, captures every statement
+// between the IIFE opening and `function init() {`, and injects that block at
+// the top of each stringified callback body so the imports come along for the
+// ride. The duplicated definitions in the loader VM are dead code, but
+// harmless — the loader only ever runs `init()`.
+function inlineHelpersIntoStringifiedCallbacks(src, extKey) {
+  const iifeMatch = src.match(/^"use strict";\s*\r?\n\(\(\) => \{\r?\n/);
+  if (!iifeMatch) return src;
+  const iifeEnd = iifeMatch.index + iifeMatch[0].length;
+
+  const initMatch = src.match(/^  function init\(\) \{\r?\n/m);
+  if (!initMatch) return src;
+  const initStart = initMatch.index;
+
+  const helpers = src.slice(iifeEnd, initStart);
+  if (!helpers.trim()) return src;
+
+  // Strip helpers from their original top-level location — they're dead code
+  // there (the loader VM only ever calls `init()`) and removing them shrinks
+  // the payload.
+  const stripped = src.slice(0, iifeEnd) + src.slice(initStart);
+
+  // Re-indent helpers from IIFE-body indent (2 spaces) to register-callback
+  // body indent (6 spaces) by adding 4 spaces to each non-empty line.
+  const reindented = helpers
+    .split('\n')
+    .map((line) => (line.length > 0 ? '    ' + line : line))
+    .join('\n');
+
+  const callbackOpenings =
+    /\$ui\.register\(\s*\(([^)]*)\)\s*=>\s*\{\r?\n/g;
+
+  let result = '';
+  let cursor = 0;
+  let injected = 0;
+
+  let m;
+  while ((m = callbackOpenings.exec(stripped)) !== null) {
+    const insertPos = m.index + m[0].length;
+    result += stripped.slice(cursor, insertPos);
+    result += reindented;
+    cursor = insertPos;
+    injected += 1;
+  }
+  result += stripped.slice(cursor);
+
+  if (injected === 0) {
+    console.warn(
+      `[inline-libs] ${extKey}: found 'function init' but no $ui.register callback — skipped`
+    );
+    return src;
+  }
+
+  console.log(
+    `[inline-libs] ${extKey}: inlined ${helpers.length} bytes of helpers into ${injected} callback${injected === 1 ? '' : 's'}`
+  );
+  return result;
+}
+
 fs.rmSync(distDir, { recursive: true, force: true });
 
 const extensions = getExtensions();
@@ -67,7 +132,12 @@ for (const ext of extensions) {
     );
   }
 
-  const payload = fs.readFileSync(outFile, 'utf8');
+  let payload = fs.readFileSync(outFile, 'utf8');
+  const rewritten = inlineHelpersIntoStringifiedCallbacks(payload, ext.key);
+  if (rewritten !== payload) {
+    fs.writeFileSync(outFile, rewritten, 'utf8');
+    payload = rewritten;
+  }
   manifest.payloadURI = undefined;
   manifest.payload = payload;
   manifest.language = 'javascript';

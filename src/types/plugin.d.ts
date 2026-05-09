@@ -7,7 +7,7 @@ declare namespace $ui {
    * Registers the plugin as UI plugin.
    * @param fn - The setup function for the plugin.
    */
-  function register(fn: (ctx: Context) => void): void;
+  function register<T extends Context>(fn: (ctx: T) => void): void;
 
   interface Context {
     /**
@@ -96,7 +96,7 @@ declare namespace $ui {
     /**
      * Downloader
      */
-    downloader: Downloader;
+    downloader: typeof $downloader;
 
     /**
      * Filler Manager
@@ -122,6 +122,26 @@ declare namespace $ui {
      * Debrid stream helpers
      */
     debridstream: DebridStream;
+
+    /**
+     * Cron
+     */
+    cron: Cron;
+
+    /**
+     * Auth actions. Requires the auth permission and user approval.
+     */
+    auth: Auth;
+
+    /**
+     * App settings. Requires the settings permission and user approval.
+     */
+    appSettings: AppSettings;
+
+    /**
+     * Extension management. Requires the extensions permission and user approval.
+     */
+    extensions: Extensions;
 
     /**
      * Creates a new state object with an initial value.
@@ -152,7 +172,10 @@ declare namespace $ui {
      * @param deps - Array of dependencies that trigger the effect
      * @returns A function to clean up the effect
      */
-    effect(fn: () => void, deps: State<any>[]): () => void;
+    effect(
+      fn: () => void,
+      deps: (State<any> | ReadOnlyState<any>)[]
+    ): () => void;
 
     /**
      * Makes a fetch request.
@@ -235,6 +258,7 @@ declare namespace $ui {
      */
     videoCore: VideoCore;
   }
+
   interface CacheOptions {
     /** Time to keep the entry in milliseconds. Omit or set 0 to keep it until removed or plugin unload. */
     ttl?: number;
@@ -306,6 +330,36 @@ declare namespace $ui {
       name: string,
       defaults: T
     ): DefinedSettings<T>;
+  }
+
+  interface Auth {
+    login(token: string): Promise<boolean>;
+
+    logout(): Promise<boolean>;
+  }
+
+  interface AppSettings {
+    get<T = Record<string, any>>(): Promise<T>;
+
+    get<T = any>(path: string, fallback?: T): Promise<T>;
+
+    set<T extends Record<string, any> = Record<string, any>>(
+      settings: T
+    ): Promise<T>;
+
+    set<T = any>(path: string, value: T): Promise<Record<string, any>>;
+
+    patch<T extends Record<string, any> = Record<string, any>>(
+      settings: T
+    ): Promise<Record<string, any>>;
+  }
+
+  interface Extensions {
+    enable(id: string): Promise<boolean>;
+
+    disable(id: string): Promise<boolean>;
+
+    setDisabled(id: string, disabled: boolean): Promise<boolean>;
   }
 
   interface PollOptions {
@@ -1144,6 +1198,49 @@ declare namespace $ui {
     render?: () => void;
     /** Called when the item is selected */
     onSelect: () => void;
+  }
+
+  interface Cron {
+    /**
+     * Adds a cron job
+     * @param id - The id of the cron job
+     * @param cronExpr - The cron expression
+     * @param fn - The function to call
+     */
+    add(id: string, cronExpr: string, fn: () => void): void;
+
+    /**
+     * Removes a cron job
+     * @param id - The id of the cron job
+     */
+    remove(id: string): void;
+
+    /**
+     * Removes all cron jobs
+     */
+    removeAll(): void;
+
+    /**
+     * Gets the total number of cron jobs
+     * @returns The total number of cron jobs
+     */
+    total(): number;
+
+    /**
+     * Starts the cron jobs, can be paused by calling stop()
+     */
+    start(): void;
+
+    /**
+     * Stops the cron jobs, can be resumed by calling start()
+     */
+    stop(): void;
+
+    /**
+     * Checks if the cron jobs have started
+     * @returns True if the cron jobs have started, false otherwise
+     */
+    hasStarted(): boolean;
   }
 
   interface Screen {
@@ -2713,6 +2810,15 @@ declare namespace $storage {
   function get<T = any>(key: string): T | undefined;
 
   /**
+   * Gets a value from the storage without cloning.
+   * Use with caution. Do not mutate the returned object or its nested values.
+   * @param key - The key to get
+   * @returns The value associated with the key
+   * @throws Error if something goes wrong
+   */
+  function getUnsafe<T = any>(key: string): T | undefined;
+
+  /**
    * Removes a value from the storage.
    * @param key - The key to remove
    * @throws Error if something goes wrong
@@ -2914,53 +3020,6 @@ declare namespace $anilist {
 }
 
 /**
- * Cron
- */
-
-declare namespace $cron {
-  /**
-   * Adds a cron job
-   * @param id - The id of the cron job
-   * @param cronExpr - The cron expression
-   * @param fn - The function to call
-   */
-  function add(id: string, cronExpr: string, fn: () => void): void;
-
-  /**
-   * Removes a cron job
-   * @param id - The id of the cron job
-   */
-  function remove(id: string): void;
-
-  /**
-   * Removes all cron jobs
-   */
-  function removeAll(): void;
-
-  /**
-   * Gets the total number of cron jobs
-   * @returns The total number of cron jobs
-   */
-  function total(): number;
-
-  /**
-   * Starts the cron jobs, can be paused by calling stop()
-   */
-  function start(): void;
-
-  /**
-   * Stops the cron jobs, can be resumed by calling start()
-   */
-  function stop(): void;
-
-  /**
-   * Checks if the cron jobs have started
-   * @returns True if the cron jobs have started, false otherwise
-   */
-  function hasStarted(): boolean;
-}
-
-/**
  * Database
  */
 
@@ -3052,6 +3111,7 @@ declare namespace $database {
      */
     function remove(id: number): void;
   }
+
   namespace autoDownloaderProfiles {
     /**
      * Gets all auto downloader profiles
@@ -3963,6 +4023,11 @@ declare namespace $ui {
      * @returns The client ID or empty string
      */
     getCurrentClientId(): string;
+
+    /**
+     * Gets all connected player client IDs.
+     */
+    getClientIds(): string[];
 
     /**
      * Gets the current player type
