@@ -1,5 +1,37 @@
 # Changelog
 
+## [0.10.3](https://github.com/AIOStreams/seanime-extensions/compare/seanime-extensions-v0.10.2...seanime-extensions-v0.10.3) (2026-10-28)
+
+
+### Features
+
+* **plugin:** add auto next episode ([eca2763](https://github.com/AIOStreams/seanime-extensions/commit/eca27631588474881389f23edbb0f16ef61b427c))
+* **plugin:** use torrent stream APIs for P2P streams ([68b38af](https://github.com/AIOStreams/seanime-extensions/commit/68b38af5a40ef0cfa3629b4e50cf8d481c07bdd9))
+* **seanime-extensions/aiostreams-plugin:** register entry episode tab ([68b38af](https://github.com/AIOStreams/seanime-extensions/commit/68b38af5a40ef0cfa3629b4e50cf8d481c07bdd9))
+* support variants ([ff01770](https://github.com/AIOStreams/seanime-extensions/commit/ff017700b288c27ae9738c5efd617fefa16c1a88))
+
+
+### Bug Fixes
+
+* keep manifest query params on resource requests ([5f159d8](https://github.com/AIOStreams/seanime-extensions/commit/5f159d88f11918a24d437cc38716d5cd7c95ffb2))
+* **plugin:** add version check ([18e141e](https://github.com/AIOStreams/seanime-extensions/commit/18e141e3b5f6b902b8f80a2e6bb47338619cdca9))
+* **plugin:** adjust overview/details card styling to match stream cards ([4b662d2](https://github.com/AIOStreams/seanime-extensions/commit/4b662d23605ced8b65718f7d0e0d2c78c310e3a0))
+* **plugin:** assume no prefix is tracker when building magnet ([7aaa430](https://github.com/AIOStreams/seanime-extensions/commit/7aaa43061b41ff44d252ac667f16c885f76d4f19))
+* **plugin:** load on Android and iOS servers ([a828667](https://github.com/AIOStreams/seanime-extensions/commit/a82866714ff48b66bad681330795a012551618cd))
+* **plugin:** prefer meta type for mediaType from stremio custom source ([214ed84](https://github.com/AIOStreams/seanime-extensions/commit/214ed84a0caf7ac4297a5ed508932ebce07ea090))
+* **plugin:** show results when not logged in to AniList ([04573db](https://github.com/AIOStreams/seanime-extensions/commit/04573db199eefe15aa95ae9d64f9f75e8fc73b6b))
+* **plugin:** use ctx.fetch to prevent VM panics ([ae6f82b](https://github.com/AIOStreams/seanime-extensions/commit/ae6f82bf0ea7bec5ed635fdaa0354f0c14faf8d8))
+* prefer tvdb over trakt for season number ([0c1f0e6](https://github.com/AIOStreams/seanime-extensions/commit/0c1f0e6c3f5509cb8deefd1f141bfd879a79d459))
+* **seanime-extensions/aiostreams-plugin:** handle tracker: prefix in sources when building magnet ([68b38af](https://github.com/AIOStreams/seanime-extensions/commit/68b38af5a40ef0cfa3629b4e50cf8d481c07bdd9))
+* **seanime-extensions/aiostreams-plugin:** open externalUrl links in browser ([68b38af](https://github.com/AIOStreams/seanime-extensions/commit/68b38af5a40ef0cfa3629b4e50cf8d481c07bdd9))
+* **seanime-extensions/stremio-custom-source:** handle non-series videos (e.g. movie collections) ([214ed84](https://github.com/AIOStreams/seanime-extensions/commit/214ed84a0caf7ac4297a5ed508932ebce07ea090)), closes [#930](https://github.com/AIOStreams/seanime-extensions/issues/930)
+* support parsing path based variant selectors ([112d2b8](https://github.com/AIOStreams/seanime-extensions/commit/112d2b836cb1cadbcf7ec9d0754a47a6ea487d2d))
+
+
+### Miscellaneous Chores
+
+* publish publicly by default ([203c254](https://github.com/AIOStreams/seanime-extensions/commit/203c2548d2e94678b49cf9d8be7f4eaa723ecd55))
+
 ## [0.10.2](https://github.com/Viren070/AIOStreams/compare/seanime-extensions-v0.10.1...seanime-extensions-v0.10.2) (2026-09-17)
 
 
