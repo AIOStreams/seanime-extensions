@@ -6,9 +6,6 @@ const root = process.cwd();
 const distDir = path.join(root, 'dist');
 const extensionsDir = path.join(root, 'src', 'extensions');
 
-const GITHUB_RELEASE_BASE =
-  'https://github.com/Viren070/AIOStreams/releases/download/seanime-extensions-latest';
-
 function getExtensions() {
   const entries = fs
     .readdirSync(extensionsDir, { withFileTypes: true })
@@ -142,7 +139,6 @@ for (const ext of extensions) {
   manifest.payload = payload;
   manifest.language = 'javascript';
   manifest.isDevelopment = false;
-  manifest.manifestURI = `${GITHUB_RELEASE_BASE}/${ext.key}-manifest.json`;
 
   fs.writeFileSync(outManifest, JSON.stringify(manifest, null, 2), 'utf8');
   console.log(`Built ${ext.key}: ${normalizeWinPath(outManifest)}`);

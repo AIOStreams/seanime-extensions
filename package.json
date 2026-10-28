@@ -1,17 +1,27 @@
 {
   "name": "@aiostreams/seanime-extensions",
-  "private": true,
   "version": "0.10.2",
+  "description": "AIOStreams' Seanime extensions, built into the manifests an AIOStreams server serves",
+  "license": "AGPL-3.0-only",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AIOStreams/seanime-extensions.git"
+  },
   "type": "module",
+  "files": [
+    "dist/*/manifest.json"
+  ],
   "scripts": {
     "build": "node ./scripts/build-extensions.mjs",
+    "prepack": "node ./scripts/build-extensions.mjs",
     "typecheck": "pnpm run typecheck:torrent && pnpm run typecheck:plugin && pnpm run typecheck:custom-source",
     "typecheck:torrent": "tsc -p ./src/extensions/aiostreams-torrent-provider/tsconfig.json",
     "typecheck:plugin": "tsc -p ./src/extensions/aiostreams-plugin/tsconfig.json",
-    "typecheck:custom-source": "tsc -p ./src/extensions/aiostreams-custom-source/tsconfig.json"
+    "typecheck:custom-source": "tsc -p ./src/extensions/stremio-custom-source/tsconfig.json"
   },
   "devDependencies": {
     "esbuild": "^0.28.2",
     "typescript": "^5.9.3"
-  }
+  },
+  "packageManager": "pnpm@11.0.8+sha512.4c4097e1dd2d42372c4e7fa5a791ff28fc75a484c7ac192e64b1df0fdef17594ba982f9b4fed9adfb3c757846f565b799b2763fb3733d1de1bcb82cf46684912"
 }
