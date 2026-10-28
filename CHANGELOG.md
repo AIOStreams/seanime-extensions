@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.3](https://github.com/AIOStreams/seanime-extensions/compare/v0.10.2...v0.10.3) (2026-10-28)
+
+
+### Miscellaneous Chores
+
+* publish publicly by default ([203c254](https://github.com/AIOStreams/seanime-extensions/commit/203c2548d2e94678b49cf9d8be7f4eaa723ecd55))
+
 ## [0.10.2](https://github.com/Viren070/AIOStreams/compare/seanime-extensions-v0.10.1...seanime-extensions-v0.10.2) (2026-09-17)
 
 

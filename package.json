@@ -1,6 +1,6 @@
 {
   "name": "@aiostreams/seanime-extensions",
-  "version": "0.10.2",
+  "version": "0.10.3",
   "description": "AIOStreams' Seanime extensions, built into the manifests an AIOStreams server serves",
   "license": "AGPL-3.0-only",
   "repository": {
