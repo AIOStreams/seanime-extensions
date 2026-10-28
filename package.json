@@ -11,6 +11,9 @@
   "files": [
     "dist/*/manifest.json"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "node ./scripts/build-extensions.mjs",
     "prepack": "node ./scripts/build-extensions.mjs",
